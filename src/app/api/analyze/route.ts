@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { AnalyzeRequest, AnalyzeResponse } from "@/types/analysis";
+import { nanoid } from "nanoid";
+import { AnalyzeRequest, AnalyzeResponse, SharedResult } from "@/types/analysis";
 import { buildSystemPrompt, buildUserMessage } from "@/lib/analysis/prompt";
 import { parseClaudeResponse } from "@/lib/analysis/parse-response";
+import {
+  getCachedResultId,
+  getResult,
+  storeResult,
+  setCachePointer,
+} from "@/lib/redis";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -26,6 +33,23 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalyzeRe
       );
     }
 
+    // ── 캐시 체크 ──
+    if (body.imageHash) {
+      const cachedId = await getCachedResultId(body.imageHash);
+      if (cachedId) {
+        const cached = await getResult(cachedId);
+        if (cached) {
+          return NextResponse.json({
+            success: true,
+            result: cached.result,
+            resultId: cachedId,
+            cached: true,
+          });
+        }
+      }
+    }
+
+    // ── Claude Vision API 호출 ──
     const systemPrompt = buildSystemPrompt();
     const userMessage = buildUserMessage(body.measurements, body.preClassification);
 
@@ -59,7 +83,27 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalyzeRe
 
     const result = parseClaudeResponse(responseText, body.measurements);
 
-    return NextResponse.json({ success: true, result });
+    // ── Redis 저장 ──
+    const resultId = nanoid(12);
+    const sharedResult: SharedResult = {
+      result,
+      thumbnailBase64: body.thumbnailBase64 || "",
+      createdAt: new Date().toISOString(),
+    };
+
+    const savePromises: Promise<boolean>[] = [storeResult(resultId, sharedResult)];
+    if (body.imageHash) {
+      savePromises.push(setCachePointer(body.imageHash, resultId));
+    }
+
+    await Promise.all(savePromises);
+
+    return NextResponse.json({
+      success: true,
+      result,
+      resultId,
+      cached: false,
+    });
   } catch (error) {
     console.error("Analysis error:", error);
 
