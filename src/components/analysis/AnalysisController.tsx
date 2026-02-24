@@ -9,6 +9,8 @@ import {
 } from "@/types/analysis";
 import { FaceDetectionResult } from "@/types/landmarks";
 import { loadImage, prepareImageForApi } from "@/lib/utils/image";
+import { computeImageHash } from "@/lib/utils/image-hash";
+import { createThumbnail } from "@/lib/utils/thumbnail";
 import { detectFace } from "@/lib/face-detection/detect";
 import { calculateMeasurements } from "@/lib/face-detection/measurements";
 import { preClassify } from "@/lib/analysis/classifier";
@@ -16,6 +18,7 @@ import ImageUploader from "@/components/upload/ImageUploader";
 import ProcessingSteps from "./ProcessingSteps";
 import LandmarkCanvas from "./LandmarkCanvas";
 import ResultCard from "@/components/results/ResultCard";
+import ShareButton from "@/components/results/ShareButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle, RotateCcw } from "lucide-react";
@@ -28,7 +31,7 @@ type Action =
       type: "SET_DETECTION";
       detection: FaceDetectionResult;
     }
-  | { type: "SET_RESULT"; result: AnalysisResult }
+  | { type: "SET_RESULT"; result: AnalysisResult; resultId: string | null }
   | { type: "SET_ERROR"; error: string }
   | { type: "RESET" };
 
@@ -38,6 +41,7 @@ const initialState: AnalysisState = {
   imageFile: null,
   imagePreviewUrl: null,
   result: null,
+  resultId: null,
   error: null,
 };
 
@@ -51,13 +55,19 @@ function reducer(state: AnalysisState, action: Action): AnalysisState {
         step: "uploading",
         error: null,
         result: null,
+        resultId: null,
       };
     case "SET_STEP":
       return { ...state, step: action.step };
     case "SET_DETECTION":
       return { ...state, step: "extracting-features" };
     case "SET_RESULT":
-      return { ...state, step: "complete", result: action.result };
+      return {
+        ...state,
+        step: "complete",
+        result: action.result,
+        resultId: action.resultId,
+      };
     case "SET_ERROR":
       return { ...state, step: "error", error: action.error };
     case "RESET":
@@ -81,9 +91,14 @@ export default function AnalysisController() {
       const previewUrl = URL.createObjectURL(file);
       dispatch({ type: "SET_IMAGE", file, previewUrl });
 
-      // Step 1: Detect face
+      // Step 1: Detect face + 해시/썸네일 병렬 생성
       dispatch({ type: "SET_STEP", step: "detecting-face" });
-      const img = await loadImage(file);
+      const [img, imageHash, thumbnailBase64] = await Promise.all([
+        loadImage(file),
+        computeImageHash(file),
+        createThumbnail(file),
+      ]);
+
       const detection = await detectFace(img);
       setDetectionResult(detection);
       dispatch({ type: "SET_DETECTION", detection });
@@ -104,6 +119,8 @@ export default function AnalysisController() {
           mediaType,
           measurements,
           preClassification: preScores,
+          imageHash,
+          thumbnailBase64,
         }),
       });
 
@@ -113,7 +130,16 @@ export default function AnalysisController() {
         throw new Error(data.error || "분석에 실패했습니다.");
       }
 
-      dispatch({ type: "SET_RESULT", result: data.result });
+      // Step 4: 공유 링크 생성 완료
+      dispatch({ type: "SET_STEP", step: "saving-result" });
+      // 짧은 딜레이로 "공유 링크 생성 중..." 단계 표시 (서버에서 이미 저장 완료)
+      await new Promise((resolve) => setTimeout(resolve, 800));
+
+      dispatch({
+        type: "SET_RESULT",
+        result: data.result,
+        resultId: data.resultId || null,
+      });
     } catch (error) {
       const message =
         error instanceof Error
@@ -131,7 +157,8 @@ export default function AnalysisController() {
   const isProcessing =
     state.step === "detecting-face" ||
     state.step === "extracting-features" ||
-    state.step === "analyzing-ai";
+    state.step === "analyzing-ai" ||
+    state.step === "saving-result";
 
   return (
     <div className="space-y-4">
@@ -159,8 +186,8 @@ export default function AnalysisController() {
         </Card>
       )}
 
-      {/* Ad during AI analysis */}
-      {state.step === "analyzing-ai" && (
+      {/* Ad during AI analysis + saving result */}
+      {(state.step === "analyzing-ai" || state.step === "saving-result") && (
         <AdSlot format="rectangle" />
       )}
 
@@ -210,7 +237,9 @@ export default function AnalysisController() {
 
           <ResultCard result={state.result} />
 
-          <div className="flex justify-center pt-2">
+          {/* Share + Reset */}
+          <div className="flex justify-center gap-3 pt-2">
+            {state.resultId && <ShareButton resultId={state.resultId} />}
             <Button onClick={handleReset} variant="outline" className="gap-2">
               <RotateCcw className="w-4 h-4" />
               다시 분석하기

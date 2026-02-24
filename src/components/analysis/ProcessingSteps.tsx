@@ -11,6 +11,7 @@ const STEPS = [
   { key: "detecting-face" as const, label: "얼굴 감지 중..." },
   { key: "extracting-features" as const, label: "특징 추출 중..." },
   { key: "analyzing-ai" as const, label: "AI 분석 중..." },
+  { key: "saving-result" as const, label: "공유 링크 생성 중..." },
   { key: "complete" as const, label: "분석 완료!" },
 ];
 
@@ -18,7 +19,7 @@ function getStepStatus(
   stepKey: string,
   currentStep: AnalysisStep
 ): "pending" | "active" | "complete" {
-  const stepOrder = ["detecting-face", "extracting-features", "analyzing-ai", "complete"];
+  const stepOrder = ["detecting-face", "extracting-features", "analyzing-ai", "saving-result", "complete"];
   const currentIdx = stepOrder.indexOf(currentStep);
   const stepIdx = stepOrder.indexOf(stepKey);
 
