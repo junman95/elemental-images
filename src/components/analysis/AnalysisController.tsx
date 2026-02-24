@@ -19,6 +19,7 @@ import ResultCard from "@/components/results/ResultCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle, RotateCcw } from "lucide-react";
+import AdSlot from "@/components/ad/AdSlot";
 
 type Action =
   | { type: "SET_IMAGE"; file: File; previewUrl: string }
@@ -156,6 +157,11 @@ export default function AnalysisController() {
             <ProcessingSteps currentStep={state.step} />
           </CardContent>
         </Card>
+      )}
+
+      {/* Ad during AI analysis */}
+      {state.step === "analyzing-ai" && (
+        <AdSlot format="rectangle" />
       )}
 
       {/* Error */}
