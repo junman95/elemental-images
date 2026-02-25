@@ -1,0 +1,79 @@
+{/* Overview.mdx */}
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title="Design System/Overview" />
+
+# 오행 관상 분석 — 디자인 시스템
+
+Stitch **"Five Elements Face Analysis"** 테마 기반
+**Light + Glassmorphism** 버전 컴포넌트 라이브러리
+
+---
+
+## 🎨 디자인 토큰
+
+| 토큰 | 값 | 용도 |
+|---|---|---|
+| `--ds-primary` | `#13ec5b` | 브랜드 초록 |
+| `--ds-gold` | `#d4af37` | 금색 포인트 |
+| `--ds-bg` | `#f6f8f6` | 페이지 배경 |
+| `--ds-text` | `#1a2e1a` | 본문 텍스트 |
+
+## 🔤 폰트
+
+- **Display** — `Noto Serif KR` (제목, 강조) → `font-display` 클래스
+- **Body** — `Noto Sans KR` (본문) → 기본 `font-sans`
+
+## 🪟 Glassmorphism 유틸리티
+
+| 클래스 | 설명 |
+|---|---|
+| `ds-glass` | 기본 글래스 (`bg-white/65 + blur(12px)`) |
+| `ds-glass-subtle` | 연한 글래스 (`bg-white/45 + blur(8px)`) |
+| `ds-glass-primary` | 초록 틴트 글래스 |
+
+## 📦 컴포넌트 목록
+
+| 컴포넌트 | 파일 | 주요 props |
+|---|---|---|
+| Typography | `Typography.tsx` | Eyebrow, PageTitle, SectionTitle, CardTitle, Body, Muted, Quote |
+| Button | `DsButton.tsx` | `variant`, `size` |
+| Card | `DsCard.tsx` | `variant`, `hover` |
+| ElementTag | `ElementTag.tsx` | `element`, `size`, `showHanja` |
+| Input | `DsInput.tsx` | DsInput, DsSearchInput |
+| Divider | `Divider.tsx` | `ornament`, `color` |
+| Layout | `Layout.tsx` | Container, Section, SectionHeader, PageWrapper, DsNav |
+
+## 🚀 사용 방법
+
+```tsx
+import {
+  DsCard, DsButton, ElementTag,
+  Container, SectionHeader, DsNav,
+  PageTitle, Eyebrow, Divider,
+} from "@/components/ds";
+
+export default function Page() {
+  return (
+    <PageWrapper>
+      <DsNav>...</DsNav>
+      <Container>
+        <SectionHeader
+          eyebrow="The Imperial Registry"
+          title="오행 얼굴형 분석"
+        />
+        <DsCard variant="glass" hover>
+          <ElementTag element="wood" size="md" />
+        </DsCard>
+      </Container>
+    </PageWrapper>
+  );
+}
+```
+
+## 📐 레이아웃 규칙
+
+- **Max width** — `1600px` (Container)
+- **패딩** — `px-6` (mobile) / `px-10` (lg+)
+- **배경** — `dancheong-light` (단청 도트 패턴 + `#f6f8f6`)
+- **내비** — `bg-white/95 + backdrop-blur`, 금색 하단 보더
