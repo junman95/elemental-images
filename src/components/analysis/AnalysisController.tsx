@@ -19,18 +19,12 @@ import ProcessingSteps from "./ProcessingSteps";
 import LandmarkCanvas from "./LandmarkCanvas";
 import ResultCard from "@/components/results/ResultCard";
 import ShareButton from "@/components/results/ShareButton";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle, RotateCcw } from "lucide-react";
 import AdSlot from "@/components/ad/AdSlot";
 
 type Action =
   | { type: "SET_IMAGE"; file: File; previewUrl: string }
   | { type: "SET_STEP"; step: AnalysisStep }
-  | {
-      type: "SET_DETECTION";
-      detection: FaceDetectionResult;
-    }
+  | { type: "SET_DETECTION"; detection: FaceDetectionResult }
   | { type: "SET_RESULT"; result: AnalysisResult; resultId: string | null }
   | { type: "SET_ERROR"; error: string }
   | { type: "RESET" };
@@ -87,11 +81,9 @@ export default function AnalysisController() {
 
   const runAnalysis = useCallback(async (file: File) => {
     try {
-      // Set image preview
       const previewUrl = URL.createObjectURL(file);
       dispatch({ type: "SET_IMAGE", file, previewUrl });
 
-      // Step 1: Detect face + 해시/썸네일 병렬 생성
       dispatch({ type: "SET_STEP", step: "detecting-face" });
       const [img, imageHash, thumbnailBase64] = await Promise.all([
         loadImage(file),
@@ -103,11 +95,9 @@ export default function AnalysisController() {
       setDetectionResult(detection);
       dispatch({ type: "SET_DETECTION", detection });
 
-      // Step 2: Calculate measurements
       const measurements = calculateMeasurements(detection);
       const preScores = preClassify(measurements);
 
-      // Step 3: Send to AI
       dispatch({ type: "SET_STEP", step: "analyzing-ai" });
       const { base64, mediaType } = await prepareImageForApi(file);
 
@@ -130,9 +120,7 @@ export default function AnalysisController() {
         throw new Error(data.error || "분석에 실패했습니다.");
       }
 
-      // Step 4: 공유 링크 생성 완료
       dispatch({ type: "SET_STEP", step: "saving-result" });
-      // 짧은 딜레이로 "공유 링크 생성 중..." 단계 표시 (서버에서 이미 저장 완료)
       await new Promise((resolve) => setTimeout(resolve, 800));
 
       dispatch({
@@ -162,88 +150,109 @@ export default function AnalysisController() {
 
   return (
     <div className="space-y-4">
-      {/* Upload section */}
+      {/* ── 업로드 ── */}
       {state.step === "idle" && (
         <ImageUploader onImageSelected={runAnalysis} />
       )}
 
-      {/* Processing */}
+      {/* ── 처리 중 ── */}
       {isProcessing && (
-        <Card>
-          <CardContent className="pt-6">
-            {state.imagePreviewUrl && (
-              <div className="mb-4 rounded-lg overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={state.imagePreviewUrl}
-                  alt="분석 중인 사진"
-                  className="w-full h-auto max-h-64 object-contain"
-                />
-              </div>
-            )}
+        <div className="rounded-2xl ds-glass overflow-hidden">
+          {state.imagePreviewUrl && (
+            <div className="relative overflow-hidden max-h-56">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={state.imagePreviewUrl}
+                alt="분석 중인 사진"
+                className="w-full h-auto max-h-56 object-contain"
+              />
+              {/* 그라데이션 오버레이 */}
+              <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white/80 to-transparent" />
+            </div>
+          )}
+          <div className="px-5 py-4">
+            <p className="text-xs font-bold tracking-[0.2em] uppercase text-[#d4af37] mb-3">
+              분석 진행 중
+            </p>
             <ProcessingSteps currentStep={state.step} />
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
-      {/* Ad during AI analysis + saving result */}
+      {/* ── AI 분석/저장 중 광고 ── */}
       {(state.step === "analyzing-ai" || state.step === "saving-result") && (
         <AdSlot format="rectangle" />
       )}
 
-      {/* Error */}
+      {/* ── 에러 ── */}
       {state.step === "error" && (
-        <Card className="border-destructive">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-destructive">
-                  분석 오류
-                </p>
-                <p className="text-sm text-muted-foreground">{state.error}</p>
+        <div className="rounded-2xl ds-glass overflow-hidden border-l-[3px] border-l-[#ef4444]">
+          <div className="p-5">
+            <div className="flex items-start gap-3 mb-4">
+              {/* 에러 아이콘 */}
+              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-[rgba(239,68,68,0.1)] shrink-0">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-bold text-[#1a2e1a] mb-0.5">분석 오류</p>
+                <p className="text-sm text-[#4a664a]">{state.error}</p>
               </div>
             </div>
-            <Button
+            <button
               onClick={handleReset}
-              variant="outline"
-              size="sm"
-              className="mt-4 gap-2"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border border-[rgba(26,46,26,0.15)] text-[#4a664a] hover:border-[#13ec5b] hover:text-[#13ec5b] transition-all duration-200"
             >
-              <RotateCcw className="w-4 h-4" />
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+              </svg>
               다시 시도
-            </Button>
-          </CardContent>
-        </Card>
+            </button>
+          </div>
+        </div>
       )}
 
-      {/* Results */}
+      {/* ── 결과 ── */}
       {state.step === "complete" && state.result && (
         <>
-          {/* Landmark overlay */}
+          {/* 랜드마크 오버레이 */}
           {state.imagePreviewUrl && detectionResult && (
-            <Card>
-              <CardContent className="pt-6">
-                <h3 className="font-bold text-base mb-2">얼굴 랜드마크</h3>
+            <div className="rounded-2xl ds-glass overflow-hidden">
+              <div className="px-5 pt-4 pb-1">
+                <p className="text-xs font-bold tracking-[0.2em] uppercase text-[#d4af37]">
+                  얼굴 랜드마크
+                </p>
+              </div>
+              <div className="p-4">
                 <LandmarkCanvas
                   imageUrl={state.imagePreviewUrl}
                   landmarks={detectionResult.landmarks}
                   imageWidth={detectionResult.imageWidth}
                   imageHeight={detectionResult.imageHeight}
                 />
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
           <ResultCard result={state.result} />
 
-          {/* Share + Reset */}
+          {/* 공유 + 다시하기 */}
           <div className="flex justify-center gap-3 pt-2">
             {state.resultId && <ShareButton resultId={state.resultId} />}
-            <Button onClick={handleReset} variant="outline" className="gap-2">
-              <RotateCcw className="w-4 h-4" />
+            <button
+              onClick={handleReset}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium border border-[rgba(26,46,26,0.15)] text-[#4a664a] hover:border-[#13ec5b] hover:text-[#13ec5b] transition-all duration-200"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+              </svg>
               다시 분석하기
-            </Button>
+            </button>
           </div>
         </>
       )}
