@@ -21,22 +21,24 @@ export default function FeatureBreakdown({ result }: FeatureBreakdownProps) {
   );
 
   return (
-    <div className="space-y-3">
-      <h3 className="font-bold text-base">세부 분석</h3>
+    <div className="space-y-4">
+      <h3 className="text-xs font-bold tracking-[0.2em] uppercase text-[#d4af37]">
+        세부 분석
+      </h3>
 
       {result.analysisText && (
-        <p className="text-sm leading-relaxed text-foreground/80 bg-muted/50 rounded-lg p-3">
+        <p className="text-sm leading-relaxed text-[#4a664a] bg-[rgba(26,46,26,0.04)] rounded-xl p-4 border border-[rgba(26,46,26,0.06)]">
           {result.analysisText}
         </p>
       )}
 
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         {features.map(([key, value]) => (
           <div key={key} className="flex gap-3 text-sm">
-            <span className="font-medium text-muted-foreground w-16 shrink-0">
+            <span className="font-bold text-xs text-[#8aaa8a] w-16 shrink-0 pt-0.5">
               {FEATURE_LABELS[key] || key}
             </span>
-            <span className="text-foreground/80">{value}</span>
+            <span className="text-[#4a664a] text-xs leading-relaxed">{value}</span>
           </div>
         ))}
       </div>
