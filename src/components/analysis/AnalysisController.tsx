@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle, RotateCcw } from "lucide-react";
 import AdSlot from "@/components/ad/AdSlot";
+import { toUserMessage, statusToMessage } from "@/lib/errors";
 
 type Action =
   | { type: "SET_IMAGE"; file: File; previewUrl: string }
@@ -111,18 +112,37 @@ export default function AnalysisController() {
       dispatch({ type: "SET_STEP", step: "analyzing-ai" });
       const { base64, mediaType } = await prepareImageForApi(file);
 
-      const response = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          imageBase64: base64,
-          mediaType,
-          measurements,
-          preClassification: preScores,
-          imageHash,
-          thumbnailBase64,
-        }),
-      });
+      let response: Response;
+      try {
+        response = await fetch("/api/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            imageBase64: base64,
+            mediaType,
+            measurements,
+            preClassification: preScores,
+            imageHash,
+            thumbnailBase64,
+          }),
+        });
+      } catch {
+        // fetch 자체가 실패 (오프라인, DNS 오류 등)
+        throw new Error("네트워크 연결을 확인하고 다시 시도해주세요.");
+      }
+
+      if (!response.ok && response.status !== 200) {
+        // 서버 에러 응답 — JSON body가 있으면 그 메시지 사용
+        try {
+          const errData: AnalyzeResponse = await response.json();
+          throw new Error(errData.error || statusToMessage(response.status));
+        } catch (jsonErr) {
+          if (jsonErr instanceof Error && jsonErr.message !== "Failed to parse") {
+            throw jsonErr;
+          }
+          throw new Error(statusToMessage(response.status));
+        }
+      }
 
       const data: AnalyzeResponse = await response.json();
 
@@ -141,11 +161,7 @@ export default function AnalysisController() {
         resultId: data.resultId || null,
       });
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "알 수 없는 오류가 발생했습니다.";
-      dispatch({ type: "SET_ERROR", error: message });
+      dispatch({ type: "SET_ERROR", error: toUserMessage(error) });
     }
   }, [setDetectionResult]);
 
