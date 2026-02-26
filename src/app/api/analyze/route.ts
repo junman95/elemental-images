@@ -10,6 +10,7 @@ import {
   storeResult,
   setCachePointer,
 } from "@/lib/redis";
+import { classifyError, statusToMessage } from "@/lib/errors";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -105,12 +106,37 @@ export async function POST(request: NextRequest): Promise<NextResponse<AnalyzeRe
       cached: false,
     });
   } catch (error) {
-    console.error("Analysis error:", error);
+    console.error("[/api/analyze]", error);
+
+    const code = classifyError(error);
+
+    if (code === "RATE_LIMIT") {
+      return NextResponse.json(
+        { success: false, error: "AI 서버가 혼잡합니다. 잠시 후 다시 시도해주세요." },
+        { status: 429 }
+      );
+    }
+
+    if (code === "SERVER_CONFIG") {
+      return NextResponse.json(
+        { success: false, error: "서버 설정 오류입니다." },
+        { status: 500 }
+      );
+    }
+
+    // Anthropic SDK의 HTTP status 에러
+    const status = (error as { status?: number }).status;
+    if (status) {
+      return NextResponse.json(
+        { success: false, error: statusToMessage(status) },
+        { status }
+      );
+    }
 
     const message =
       error instanceof Error
         ? error.message
-        : "AI 분석 중 오류가 발생했습니다. 다시 시도해 주세요.";
+        : "AI 분석 중 오류가 발생했습니다.";
 
     return NextResponse.json(
       { success: false, error: message },
