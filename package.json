@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run build:storybook && next build",
+    "build:storybook": "rm -rf .sb-dist public/storybook && storybook build --output-dir .sb-dist && mv .sb-dist public/storybook",
     "start": "next start",
     "lint": "eslint",
     "storybook": "storybook dev -p 6006",
