@@ -124,3 +124,57 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ─── 오행 디자인 시스템 ──────────────────────────────────── */
+
+/* DS 커스텀 토큰 */
+:root {
+  --ds-primary: #13ec5b;
+  --ds-primary-dark: #0db849;
+  --ds-primary-fg: #102216;
+  --ds-gold: #d4af37;
+  --ds-bg: #f6f8f6;
+  --ds-text: #1a2e1a;
+  --ds-text-secondary: #4a664a;
+  --ds-text-muted: #8aaa8a;
+  --font-display: var(--font-noto-serif-kr);
+}
+
+/* Light 단청 도트 패턴 (배경 텍스처) */
+.dancheong-light {
+  background-color: #f6f8f6;
+  background-image: radial-gradient(
+    circle at 2px 2px,
+    rgba(19, 236, 91, 0.07) 1px,
+    transparent 0
+  );
+  background-size: 40px 40px;
+}
+
+/* Glassmorphism 유틸리티 */
+.ds-glass {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 4px 24px rgba(26, 46, 26, 0.07);
+}
+
+.ds-glass-subtle {
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.ds-glass-primary {
+  background: rgba(19, 236, 91, 0.06);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(19, 236, 91, 0.18);
+}
+
+/* 디스플레이 폰트 */
+.font-display {
+  font-family: var(--font-display), "Noto Serif KR", serif;
+}
